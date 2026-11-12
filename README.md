@@ -43,3 +43,13 @@ Four small puzzles were created for manual testing:
 - `example4.bff`: fixed and movable reflective blocks.
 
 All four were run successfully, and their output grids were checked against the expected arrangements. 
+
+## Automated tests
+
+Run the eight unit tests from the project folder:
+
+```sh
+python3 -m unittest -v test_solver
+```
+
+They check block behavior, placements, fixed blocks, finding solutions, impossible puzzles, and saving/loading a solution.
