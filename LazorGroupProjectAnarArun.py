@@ -1,4 +1,8 @@
-""""Read our board and follow its lasers.""""
+"""Read a Lazors board, find a solution, and save it."""
+
+from itertools import combinations
+from pathlib import Path
+import sys
 
 
 class Block:
@@ -280,27 +284,116 @@ def simulate_lasers(board, grid=None):
     return reached
 
 
-if __name__ == "__main__":
-    filename = input("Enter the .bff filename: ").strip()
+# Solver and output functions.
+def generate_placements(board):
+    """Yield each unique placement, using every available movable block."""
+    spaces = []
+    for row in range(len(board.grid)):
+        for column in range(len(board.grid[row])):
+            if board.grid[row][column] == "o":
+                spaces.append((row, column))
+
+    # Copy rows so the original board stays unchanged.
+    grid = [row[:] for row in board.grid]
+    kinds = ["A", "B", "C"]
+
+    def place_kind(index, remaining):
+        """Choose positions for one kind, then place the next kind."""
+        if index == len(kinds):
+            yield [row[:] for row in grid]
+            return
+
+        kind = kinds[index]
+        count = board.blocks[kind]
+        # Combinations avoid swapping identical blocks into duplicate boards.
+        for chosen in combinations(remaining, count):
+            for row, column in chosen:
+                grid[row][column] = Block(kind)
+
+            next_spaces = []
+            for position in remaining:
+                if position not in chosen:
+                    next_spaces.append(position)
+
+            yield from place_kind(index + 1, next_spaces)
+
+            for row, column in chosen:
+                grid[row][column] = "o"
+
+    yield from place_kind(0, spaces)
+
+
+def solve_board(board):
+    """Return the first solution grid, or None if no arrangement works."""
+    for grid in generate_placements(board):
+        reached = simulate_lasers(board, grid)
+        if all(target in reached for target in board.targets):
+            return grid
+    return None
+
+
+def write_solution(board, grid, filename):
+    """Save the solved layout in readable, reusable BFF format."""
+    # All placed blocks are fixed in the saved solution. The remaining
+    # movable counts are zero, so read_bff can load this board again.
+    with open(filename, "w") as file:
+        file.write("# Solved Lazors board; all shown blocks are fixed.\n")
+        file.write("# A = reflect, B = opaque, C = refract\n")
+        file.write("# o = empty allowed space, x = no block allowed\n")
+        file.write("GRID START\n")
+        for row in grid:
+            symbols = []
+            for cell in row:
+                if isinstance(cell, Block):
+                    symbols.append(cell.kind)
+                else:
+                    symbols.append(cell)
+            file.write(" ".join(symbols) + "\n")
+        file.write("GRID STOP\nA 0\nB 0\nC 0\n")
+        for x, y, dx, dy in board.lasers:
+            file.write(f"L {x} {y} {dx} {dy}\n")
+        for x, y in board.targets:
+            file.write(f"P {x} {y}\n")
+
+
+def main():
+    """Read a puzzle, solve it, and report where the result was saved."""
+    if len(sys.argv) > 3:
+        print("Usage: python LazorGroupProjectAnarArun.py [puzzle.bff] [output.bff]")
+        return 1
 
     try:
-        board = read_bff(filename)
-        reached = simulate_lasers(board)
-
-        hits = 0
-
-        for target in board.targets:
-            if target in reached:
-                hits += 1
-
-        print("Movable blocks:", board.blocks)
-        print("Targets reached:", hits)
-        print("Total targets:", len(board.targets))
-
-        if hits == len(board.targets):
-            print("All targets were reached.")
+        if len(sys.argv) >= 2:
+            filename = sys.argv[1]
         else:
-            print("Some targets were not reached.")
+            filename = input("Enter the .bff filename: ").strip()
 
-    except (OSError, ValueError) as error:
+        if len(sys.argv) == 3:
+            output = Path(sys.argv[2])
+        else:
+            path = Path(filename)
+            output = path.with_name(path.stem + "_solution.bff")
+
+        if Path(filename).resolve() == output.resolve():
+            raise ValueError("The output filename must differ from the puzzle.")
+        if output.exists():
+            raise ValueError("The output file already exists. Choose a new name.")
+
+        board = read_bff(filename)
+        solution = solve_board(board)
+        if solution is None:
+            print("No solution found. No output file was written.")
+            return 0
+
+        write_solution(board, solution, output)
+        print("Solution found. All targets were reached.")
+        print("Solution saved to:", output)
+        return 0
+
+    except (OSError, ValueError, EOFError) as error:
         print("Error:", error)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

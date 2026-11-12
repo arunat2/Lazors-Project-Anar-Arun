@@ -1,0 +1,8 @@
+# A refractive block must send the beam to both targets.
+GRID START
+o o
+GRID STOP
+C 1
+L 2 1 -1 -1
+P 1 0
+P 3 0
