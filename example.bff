@@ -1,0 +1,7 @@
+# Small puzzle requiring one reflection.
+GRID START
+o o
+GRID STOP
+A 1
+L 2 1 -1 -1
+P 3 0

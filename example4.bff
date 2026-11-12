@@ -1,0 +1,8 @@
+# The left reflective block is fixed. Place the movable block.
+GRID START
+A o o
+GRID STOP
+A 1
+L 2 1 -1 -1
+L 4 1 1 -1
+P 3 0

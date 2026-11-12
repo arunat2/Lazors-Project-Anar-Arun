@@ -1,0 +1,7 @@
+# The opaque block must stay out of the laser path.
+GRID START
+o o
+GRID STOP
+B 1
+L 0 1 1 -1
+P 1 0
